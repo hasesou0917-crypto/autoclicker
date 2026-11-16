@@ -1,86 +1,242 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="オートクリッカー" />
-  <title>オートクリッカー シミュレーター</title>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --panel: #1e293b;
-      --panel-light: #334155;
-      --text: #f8fafc;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
-      --accent-dark: #0284c7;
-      --success: #22c55e;
-      --danger: #ef4444;
-      --warn: #f59e0b;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AutoClicker Simulator</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --panel-light: #334155;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --accent: #38bdf8;
+            --accent-dark: #0284c7;
+            --warn: #f59e0b;
+            --danger: #ef4444;
+        }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background-color: var(--panel);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--panel-light);
+            z-index: 100;
+        }
+        h1 {
+            font-size: 16px;
+            margin: 0;
+            color: var(--accent);
+        }
+        .controls {
+            display: flex;
+            gap: 8px;
+        }
+        button {
+            background-color: var(--accent);
+            color: #0f172a;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button.active {
+            background-color: var(--danger);
+            color: white;
+        }
+        button.secondary {
+            background-color: var(--panel-light);
+            color: var(--text);
+        }
+        #workspace {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: radial-gradient(circle, #1e293b 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .click-marker {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(56, 189, 248, 0.4);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 16px;
+            transform: translate(-50%, -50%);
+            touch-action: none;
+            cursor: grab;
+            z-index: 10;
+        }
+        .click-marker.clicking {
+            background: rgba(239, 68, 68, 0.6);
+            border-color: var(--danger);
+            transform: translate(-50%, -50%) scale(0.9);
+        }
+        .click-marker.locked {
+            border-color: var(--warn);
+        }
+        footer {
+            background-color: var(--panel);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid var(--panel-light);
+            font-size: 12px;
+            color: var(--muted);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>AutoClicker Pro</h1>
+        <div class="controls">
+            <button id="add-btn" class="secondary">＋追加</button>
+            <button id="start-btn">開始</button>
+        </div>
+    </header>
 
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
-    }
+    <div id="workspace"></div>
 
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+    <footer>
+        <div>状態: <span id="status-text" style="color: var(--accent);">停止中</span></div>
+        <div>タップ数: <span id="count-text">0</span></div>
+    </footer>
 
-    header {
-      background: var(--panel);
-      padding: 12px 14px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      border-bottom: 1px solid #334155;
-      position: sticky;
-      top: 0;
-      z-index: 50;
-    }
+    <script>
+        const workspace = document.getElementById('workspace');
+        const startBtn = document.getElementById('start-btn');
+        const addBtn = document.getElementById('add-btn');
+        const statusText = document.getElementById('status-text');
+        const countText = document.getElementById('count-text');
 
-    .title {
-      font-size: 15px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+        let markers = [];
+        let isRunning = false;
+        let totalCount = 0;
+        let intervalId = null;
 
-    .badge-save {
-      font-size: 10px;
-      background: rgba(34, 197, 94, 0.2);
-      color: #4ade80;
-      padding: 2px 6px;
-      border-radius: 999px;
-      font-weight: 600;
-    }
+        function addMarker(x, y) {
+            const id = markers.length + 1;
+            const el = document.createElement('div');
+            el.className = 'click-marker';
+            el.innerText = id;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
 
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
+            let isDragging = false;
+            let startX, startY;
 
-    button {
-      border: none;
-      border-radius: 8px;
-      padding: 8px 11px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      color: #fff;
-      background: var(--panel-light);
+            el.addEventListener('pointerdown', (e) => {
+                isDragging = false;
+                startX = e.clientX;
+                startY = e.clientY;
+                el.setPointerCapture(e.pointerId);
+            });
+
+            el.addEventListener('pointermove', (e) => {
+                if (Math.abs(e.clientX - startX) > 5 || Math.abs(e.clientY - startY) > 5) {
+                    isDragging = true;
+                    el.style.left = e.clientX + 'px';
+                    el.style.top = e.clientY + 'px';
+                }
+            });
+
+            el.addEventListener('pointerup', () => {
+                if (!isDragging) {
+                    // タップされたら削除
+                    workspace.removeChild(el);
+                    markers = markers.filter(m => m.id !== id);
+                    reorderMarkers();
+                }
+            });
+
+            workspace.appendChild(el);
+            markers.push({ id, el, x, y });
+        }
+
+        function reorderMarkers() {
+            markers.forEach((m, index) => {
+                m.id = index + 1;
+                m.el.innerText = m.id;
+            });
+        }
+
+        addBtn.addEventListener('click', () => {
+            const rect = workspace.getBoundingClientRect();
+            const x = rect.width / 2 + (Math.random() * 100 - 50);
+            const y = rect.height / 2 + (Math.random() * 100 - 50);
+            addMarker(x, y);
+        });
+
+        startBtn.addEventListener('click', () => {
+            if (markers.length === 0) {
+                alert('先に「＋追加」ボタンでタップ位置を配置してください！');
+                return;
+            }
+            isRunning = !isRunning;
+            if (isRunning) {
+                startBtn.textContent = '停止';
+                startBtn.classList.add('active');
+                statusText.textContent = '実行中...';
+                statusText.style.color = 'var(--danger)';
+                
+                let currentIndex = 0;
+                intervalId = setInterval(() => {
+                    markers.forEach(m => m.el.classList.remove('clicking'));
+                    const current = markers[currentIndex];
+                    // ランダムゆらぎ（±15msのブレをシミュレート）
+                    const jitter = (Math.random() - 0.5) * 30;
+                    
+                    current.el.classList.add('clicking');
+                    totalCount++;
+                    countText.textContent = totalCount;
+
+                    currentIndex = (currentIndex + 1) % markers.length;
+                }, 500); // 0.5秒おきにループ
+            } else {
+                startBtn.textContent = '開始';
+                startBtn.classList.remove('active');
+                statusText.textContent = '停止中';
+                statusText.style.color = 'var(--accent)';
+                clearInterval(intervalId);
+                markers.forEach(m => m.el.classList.remove('clicking'));
+            }
+        });
+
+        // 初期配置として中央に1つ置く
+        window.addEventListener('load', () => {
+            addMarker(window.innerWidth / 2, window.innerHeight / 3);
+        });
+    </script>
+</body>
+</html>
+
