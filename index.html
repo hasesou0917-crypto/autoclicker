@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AutoClicker Simulator</title>
+    <title>AutoClicker Pro - Advanced</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -70,6 +70,33 @@
             background-color: var(--panel-light);
             color: var(--text);
         }
+        #settings-panel {
+            background-color: var(--panel);
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--panel-light);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 13px;
+        }
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .setting-group label {
+            color: var(--muted);
+            font-size: 11px;
+        }
+        .setting-group input, .setting-group select {
+            background: var(--panel-light);
+            color: var(--text);
+            border: 1px solid var(--muted);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 100%;
+        }
         #workspace {
             flex: 1;
             position: relative;
@@ -100,9 +127,6 @@
             border-color: var(--danger);
             transform: translate(-50%, -50%) scale(0.9);
         }
-        .click-marker.locked {
-            border-color: var(--warn);
-        }
         footer {
             background-color: var(--panel);
             padding: 10px 15px;
@@ -125,6 +149,20 @@
         </div>
     </header>
 
+    <div id="settings-panel">
+        <div class="setting-group">
+            <label for="interval-input">クリック間隔 (ms)</label>
+            <input type="number" id="interval-input" value="500" min="50" step="50">
+        </div>
+        <div class="setting-group">
+            <label for="mode-select">モード</label>
+            <select id="mode-select">
+                <option value="loop">無限ループ</option>
+                <option value="once">順番に1周</option>
+            </select>
+        </div>
+    </div>
+
     <div id="workspace"></div>
 
     <footer>
@@ -138,6 +176,8 @@
         const addBtn = document.getElementById('add-btn');
         const statusText = document.getElementById('status-text');
         const countText = document.getElementById('count-text');
+        const intervalInput = document.getElementById('interval-input');
+        const modeSelect = document.getElementById('mode-select');
 
         let markers = [];
         let isRunning = false;
@@ -172,7 +212,6 @@
 
             el.addEventListener('pointerup', () => {
                 if (!isDragging) {
-                    // タップされたら削除
                     workspace.removeChild(el);
                     markers = markers.filter(m => m.id !== id);
                     reorderMarkers();
@@ -209,19 +248,25 @@
                 statusText.textContent = '実行中...';
                 statusText.style.color = 'var(--danger)';
                 
+                let intervalTime = parseInt(intervalInput.value) || 500;
                 let currentIndex = 0;
+
                 intervalId = setInterval(() => {
                     markers.forEach(m => m.el.classList.remove('clicking'));
                     const current = markers[currentIndex];
-                    // ランダムゆらぎ（±15msのブレをシミュレート）
-                    const jitter = (Math.random() - 0.5) * 30;
                     
                     current.el.classList.add('clicking');
                     totalCount++;
                     countText.textContent = totalCount;
 
-                    currentIndex = (currentIndex + 1) % markers.length;
-                }, 500); // 0.5秒おきにループ
+                    currentIndex++;
+                    if (currentIndex >= markers.length) {
+                        currentIndex = 0;
+                        if (modeSelect.value === 'once') {
+                            startBtn.click(); // 1周したら自動停止
+                        }
+                    }
+                }, intervalTime);
             } else {
                 startBtn.textContent = '開始';
                 startBtn.classList.remove('active');
@@ -232,11 +277,9 @@
             }
         });
 
-        // 初期配置として中央に1つ置く
         window.addEventListener('load', () => {
             addMarker(window.innerWidth / 2, window.innerHeight / 3);
         });
     </script>
 </body>
 </html>
-
